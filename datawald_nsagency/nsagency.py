@@ -181,8 +181,10 @@ class NSAgency(Agency):
                 "limit": int(kwargs.get("limit", 100)),
                 "hours": float(kwargs.get("hours", 0)),
                 "last_qty_available_change": self.last_qty_available_change,
-                "item_types": kwargs.get("item_types"),
             }
+
+            if kwargs.get("item_types"):
+                params.update({"item_types": kwargs.get("item_types")})
 
             record_type = self.get_record_type(kwargs.get("tx_type"))
             assert record_type is not None, f"{kwargs.get('tx_type')} is not supported."
