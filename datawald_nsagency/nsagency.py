@@ -230,7 +230,9 @@ class NSAgency(Agency):
                 metadatas = self.get_product_metadatas(**kwargs)
                 data = self.transform_data(raw_asset, metadatas)
             else:
-                data = self.transform_data(raw_asset, self.map.get(tx_type))
+                data = self.transform_data(
+                    raw_asset, self.map.get(self.get_record_type(tx_type))
+                )
 
             if tx_type == "inventory":
                 inventory = data.get("locations")
