@@ -22,7 +22,6 @@ class NSAgency(Agency):
 
         self.map = setting.get("TXMAP", {})
         self.join = setting.get("JOIN", {"base": [], "lines": []})
-        self.last_qty_available_change = setting.get("LAST_QTY_AVAILABLE_CHANGE", True)
 
     @property
     def payment_methods(self):
@@ -180,7 +179,9 @@ class NSAgency(Agency):
                 ).strftime("%Y-%m-%d %H:%M:%S"),
                 "limit": int(kwargs.get("limit", 100)),
                 "hours": float(kwargs.get("hours", 0)),
-                "last_qty_available_change": self.last_qty_available_change,
+                "last_qty_available_change": kwargs.get(
+                    "last_qty_available_change", True
+                ),
             }
 
             if kwargs.get("item_types"):
@@ -196,6 +197,7 @@ class NSAgency(Agency):
                         "vendor_name": kwargs.get("vendor_name"),
                     }
                 )
+                kwargs.update({"metadatas": self.get_product_metadatas(**kwargs)})
 
             raw_assets = self.get_records(
                 self.soap_connector.get_items, record_type, **params
@@ -227,8 +229,7 @@ class NSAgency(Agency):
         }
         try:
             if tx_type == "product":
-                metadatas = self.get_product_metadatas(**kwargs)
-                data = self.transform_data(raw_asset, metadatas)
+                data = self.transform_data(raw_asset, kwargs.get("metadatas"))
             else:
                 data = self.transform_data(
                     raw_asset, self.map.get(self.get_record_type(tx_type))
@@ -356,28 +357,27 @@ class NSAgency(Agency):
         assert person["data"].get("email"), f"{person['src_id']} email is null in data."
 
     def tx_transaction_tgt(self, transaction):
-        tx_type = transaction.get("tx_type_src_id").split("-")[0]
+        if transaction["data"].get("paymentMethod"):
+            transaction["data"]["paymentMethod"] = self.payment_methods[
+                transaction["data"]["paymentMethod"]
+            ]
+            transaction["data"]["terms"] = self.get_term(
+                transaction["data"]["paymentMethod"]
+            )
 
-        if tx_type in ("order"):
-            # Map the payment method.
-            if transaction["data"].get("paymentMethod"):
-                transaction["data"]["paymentMethod"] = self.payment_methods[
-                    transaction["data"]["paymentMethod"]
-                ]
-                transaction["data"]["terms"] = self.get_term(
-                    transaction["data"]["paymentMethod"]
-                )
+        # Map the shipping method.
+        if transaction["data"].get("shipMethod"):
+            transaction["data"]["shipMethod"] = self.ship_methods[
+                transaction["data"]["shipMethod"]
+            ]
 
-            # Map the shipping method.
-            if transaction["data"].get("shipMethod"):
-                transaction["data"]["shipMethod"] = self.ship_methods[
-                    transaction["data"]["shipMethod"]
-                ]
-
-            # Map country code.
+        # Map country code.
+        if transaction["data"].get("billingAddress"):
             transaction["data"]["billingAddress"]["country"] = self.countries[
                 transaction["data"]["billingAddress"]["country"]
             ]
+
+        if transaction["data"].get("shippingAddress"):
             transaction["data"]["shippingAddress"]["country"] = self.countries[
                 transaction["data"]["shippingAddress"]["country"]
             ]
