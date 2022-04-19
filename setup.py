@@ -16,7 +16,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     platforms="Linux",
-    install_requires=["DataWald-Agency", "Suitetalk-Connector"],
+    install_requires=["DataWald-Agency", "DataWald-Connector", "Suitetalk-Connector"],
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",

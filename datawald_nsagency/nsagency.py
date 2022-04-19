@@ -239,7 +239,7 @@ class NSAgency(Agency):
                 inventory = data.get("locations")
                 asset.update(
                     {
-                        "data": {"inventory": inventory, "sku": data["sku"]},
+                        "data": {"inventory": inventory},
                     }
                 )
             elif tx_type == "inventorylot":
@@ -253,7 +253,7 @@ class NSAgency(Agency):
                 )
                 asset.update(
                     {
-                        "data": {"inventorylots": inventorylots, "sku": data["sku"]},
+                        "data": {"inventorylots": inventorylots},
                     }
                 )
             elif tx_type == "pricelevel":
@@ -264,7 +264,7 @@ class NSAgency(Agency):
                         data.get("pricelevels", []),
                     )
                 )
-                asset.update({"data": {"pricelevels": pricelevels}, "sku": data["sku"]})
+                asset.update({"data": {"pricelevels": pricelevels}})
             else:
                 asset.update({"data": data})
 
