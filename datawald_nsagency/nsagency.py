@@ -48,6 +48,7 @@ class NSAgency(Agency):
     def get_record_type(self, tx_type):
         data_type = {
             "order": "salesOrder",
+            "invoice": "invoice",
             "purchaseorder": "purchaseOrder",
             "quote": "estimate",
             "opportunity": "opportunity",
