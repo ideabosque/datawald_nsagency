@@ -114,6 +114,7 @@ class NSAgency(Agency):
             record_type = self.get_record_type(kwargs.get("tx_type"))
             params = {
                 "vendor_id": kwargs.get("vendor_id"),
+                "subsidiary": kwargs.get("subsidiary"),
                 "cut_date": kwargs.get("cut_date").strftime("%Y-%m-%d %H:%M:%S"),
                 "end_date": datetime.now(
                     tz=timezone(self.setting.get("TIMEZONE", "UTC"))
@@ -180,6 +181,7 @@ class NSAgency(Agency):
                 ).strftime("%Y-%m-%d %H:%M:%S"),
                 "limit": int(kwargs.get("limit", 100)),
                 "hours": float(kwargs.get("hours", 0)),
+                "subsidiary": kwargs.get("subsidiary"),
                 "last_qty_available_change": kwargs.get(
                     "last_qty_available_change", True
                 ),
@@ -308,6 +310,7 @@ class NSAgency(Agency):
                 ).strftime("%Y-%m-%d %H:%M:%S"),
                 "limit": int(kwargs.get("limit", 100)),
                 "hours": float(kwargs.get("hours", 0)),
+                "subsidiary": kwargs.get("subsidiary")
             }
 
             record_type = self.get_record_type(kwargs.get("tx_type"))
