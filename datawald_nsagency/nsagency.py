@@ -436,6 +436,6 @@ class NSAgency(Agency):
                 log = traceback.format_exc()
                 person.update({"tx_status": "F", "tx_note": log, "tgt_id": "####"})
                 self.logger.exception(
-                    f"Failed to create order: {person['tx_type_src_id']} with error: {log}"
+                    f"Failed to create person: {person['tx_type_src_id']} with error: {log}"
                 )
         return persons
