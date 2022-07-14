@@ -310,7 +310,7 @@ class NSAgency(Agency):
                 ).strftime("%Y-%m-%d %H:%M:%S"),
                 "limit": int(kwargs.get("limit", 100)),
                 "hours": float(kwargs.get("hours", 0)),
-                "subsidiary": kwargs.get("subsidiary")
+                "subsidiary": kwargs.get("subsidiary"),
             }
 
             record_type = self.get_record_type(kwargs.get("tx_type"))
