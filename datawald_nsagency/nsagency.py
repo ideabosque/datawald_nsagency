@@ -58,6 +58,7 @@ class NSAgency(Agency):
             "billcredit": "vendorCredit",
             "payment": "vendorPayment",
             "customer": "customer",
+            "company": "customer",
             "vendor": "vendor",
             "product": "product",
             "inventory": "inventory",
