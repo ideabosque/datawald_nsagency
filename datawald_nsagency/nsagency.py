@@ -59,6 +59,7 @@ class NSAgency(Agency):
             "payment": "vendorPayment",
             "customer": "customer",
             "vendor": "vendor",
+            "contact": "contact",
             "product": "product",
             "inventory": "inventory",
             "inventorylot": "inventoryLot",
