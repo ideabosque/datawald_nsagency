@@ -60,6 +60,7 @@ class NSAgency(Agency):
             "customer": "customer",
             "company": "customer",
             "vendor": "vendor",
+            "contact": "contact",
             "product": "product",
             "inventory": "inventory",
             "inventorylot": "inventoryLot",
