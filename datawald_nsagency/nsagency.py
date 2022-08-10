@@ -148,6 +148,7 @@ class NSAgency(Agency):
 
     def tx_transaction_src(self, raw_transaction, **kwargs):
         tx_type = kwargs.get("tx_type")
+        target = kwargs.get("target")
         transaction = {
             "src_id": raw_transaction[self.setting["src_metadata"][tx_type]["src_id"]],
             "created_at": raw_transaction[
@@ -161,7 +162,7 @@ class NSAgency(Agency):
             transaction.update(
                 {
                     "data": self.transform_data(
-                        raw_transaction, self.map.get(self.get_record_type(tx_type))
+                        raw_transaction, self.map[target].get(self.get_record_type(tx_type))
                     )
                 }
             )
@@ -223,6 +224,7 @@ class NSAgency(Agency):
 
     def tx_asset_src(self, raw_asset, **kwargs):
         tx_type = kwargs.get("tx_type")
+        target = kwargs.get("target")
         asset = {
             "src_id": raw_asset[self.setting["src_metadata"][tx_type]["src_id"]],
             "created_at": raw_asset[
@@ -237,7 +239,7 @@ class NSAgency(Agency):
                 data = self.transform_data(raw_asset, kwargs.get("metadatas"))
             else:
                 data = self.transform_data(
-                    raw_asset, self.map.get(self.get_record_type(tx_type))
+                    raw_asset, self.map[target].get(self.get_record_type(tx_type))
                 )
 
             if tx_type == "inventory":
@@ -337,6 +339,7 @@ class NSAgency(Agency):
 
     def tx_person_src(self, raw_person, **kwargs):
         tx_type = kwargs.get("tx_type")
+        target = kwargs.get("target")
         person = {
             "src_id": raw_person[self.setting["src_metadata"][tx_type]["src_id"]],
             "created_at": raw_person[
@@ -348,7 +351,7 @@ class NSAgency(Agency):
         }
         try:
             person.update(
-                {"data": self.transform_data(raw_person, self.map.get(tx_type))}
+                {"data": self.transform_data(raw_person, self.map[target].get(tx_type))}
             )
         except Exception:
             log = traceback.format_exc()
