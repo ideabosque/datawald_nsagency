@@ -122,6 +122,7 @@ class NSAgency(Agency):
                     tz=timezone(self.setting.get("TIMEZONE", "UTC"))
                 ).strftime("%Y-%m-%d %H:%M:%S"),
                 "item_detail": kwargs.get("item_detail", False),
+                "inventory_detail": kwargs.get("inventory_detail", False),
                 "limit": int(kwargs.get("limit", 100)),
                 "hours": float(kwargs.get("hours", 0)),
             }
