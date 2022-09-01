@@ -151,10 +151,10 @@ class NSAgency(Agency):
             "src_id": raw_transaction[self.setting["src_metadata"][tx_type]["src_id"]],
             "created_at": raw_transaction[
                 self.setting["src_metadata"][tx_type]["created_at"]
-            ],
+            ].astimezone(timezone("UTC")),
             "updated_at": raw_transaction[
                 self.setting["src_metadata"][tx_type]["updated_at"]
-            ],
+            ].astimezone(timezone("UTC")),
         }
         try:
             transaction.update(
@@ -225,10 +225,10 @@ class NSAgency(Agency):
             "src_id": raw_asset[self.setting["src_metadata"][tx_type]["src_id"]],
             "created_at": raw_asset[
                 self.setting["src_metadata"][tx_type]["created_at"]
-            ],
+            ].astimezone(timezone("UTC")),
             "updated_at": raw_asset[
                 self.setting["src_metadata"][tx_type]["updated_at"]
-            ],
+            ].astimezone(timezone("UTC")),
         }
         try:
             if tx_type == "product":
@@ -340,10 +340,10 @@ class NSAgency(Agency):
             "src_id": raw_person[self.setting["src_metadata"][tx_type]["src_id"]],
             "created_at": raw_person[
                 self.setting["src_metadata"][tx_type]["created_at"]
-            ],
+            ].astimezone(timezone("UTC")),
             "updated_at": raw_person[
                 self.setting["src_metadata"][tx_type]["updated_at"]
-            ],
+            ].astimezone(timezone("UTC")),
         }
         try:
             person.update(
