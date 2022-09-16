@@ -117,7 +117,9 @@ class NSAgency(Agency):
             params = dict(
                 kwargs,
                 **{
-                    "cut_date": kwargs.get("cut_date").strftime("%Y-%m-%d %H:%M:%S"),
+                    "cut_date": kwargs.get("cut_date")
+                    .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
+                    .strftime("%Y-%m-%d %H:%M:%S"),
                     "end_date": datetime.now(
                         tz=timezone(self.setting.get("TIMEZONE", "UTC"))
                     ).strftime("%Y-%m-%d %H:%M:%S"),
@@ -179,7 +181,9 @@ class NSAgency(Agency):
             params = dict(
                 kwargs,
                 **{
-                    "cut_date": kwargs.get("cut_date").strftime("%Y-%m-%d %H:%M:%S"),
+                    "cut_date": kwargs.get("cut_date")
+                    .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
+                    .strftime("%Y-%m-%d %H:%M:%S"),
                     "end_date": datetime.now(
                         tz=timezone(self.setting.get("TIMEZONE", "UTC"))
                     ).strftime("%Y-%m-%d %H:%M:%S"),
@@ -306,7 +310,9 @@ class NSAgency(Agency):
             params = dict(
                 kwargs,
                 **{
-                    "cut_date": kwargs.get("cut_date").strftime("%Y-%m-%d %H:%M:%S"),
+                    "cut_date": kwargs.get("cut_date")
+                    .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
+                    .strftime("%Y-%m-%d %H:%M:%S"),
                     "end_date": datetime.now(
                         tz=timezone(self.setting.get("TIMEZONE", "UTC"))
                     ).strftime("%Y-%m-%d %H:%M:%S"),
