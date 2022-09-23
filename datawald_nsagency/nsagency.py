@@ -114,17 +114,17 @@ class NSAgency(Agency):
     def tx_transactions_src(self, **kwargs):
         try:
             record_type = self.get_record_type(kwargs.get("tx_type"))
-            params = {
-                "vendor_id": kwargs.get("vendor_id"),
-                "subsidiary": kwargs.get("subsidiary"),
-                "cut_date": kwargs.get("cut_date").strftime("%Y-%m-%d %H:%M:%S"),
-                "end_date": datetime.now(
-                    tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                ).strftime("%Y-%m-%d %H:%M:%S"),
-                "item_detail": kwargs.get("item_detail", False),
-                "limit": int(kwargs.get("limit", 100)),
-                "hours": float(kwargs.get("hours", 0)),
-            }
+            params = dict(
+                kwargs,
+                **{
+                    "cut_date": kwargs.get("cut_date")
+                    .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
+                    .strftime("%Y-%m-%d %H:%M:%S"),
+                    "end_date": datetime.now(
+                        tz=timezone(self.setting.get("TIMEZONE", "UTC"))
+                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                },
+            )
 
             raw_transactions = self.get_records(
                 self.soap_connector.get_transactions, record_type, **params
@@ -153,16 +153,17 @@ class NSAgency(Agency):
             "src_id": raw_transaction[self.setting["src_metadata"][tx_type]["src_id"]],
             "created_at": raw_transaction[
                 self.setting["src_metadata"][tx_type]["created_at"]
-            ],
+            ].astimezone(timezone("UTC")),
             "updated_at": raw_transaction[
                 self.setting["src_metadata"][tx_type]["updated_at"]
-            ],
+            ].astimezone(timezone("UTC")),
         }
         try:
             transaction.update(
                 {
                     "data": self.transform_data(
-                        raw_transaction, self.map[target].get(self.get_record_type(tx_type))
+                        raw_transaction,
+                        self.map[target].get(self.get_record_type(tx_type)),
                     )
                 }
             )
@@ -177,18 +178,17 @@ class NSAgency(Agency):
 
     def tx_assets_src(self, **kwargs):
         try:
-            params = {
-                "cut_date": kwargs.get("cut_date").strftime("%Y-%m-%d %H:%M:%S"),
-                "end_date": datetime.now(
-                    tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                ).strftime("%Y-%m-%d %H:%M:%S"),
-                "limit": int(kwargs.get("limit", 100)),
-                "hours": float(kwargs.get("hours", 0)),
-                "subsidiary": kwargs.get("subsidiary"),
-                "last_qty_available_change": kwargs.get(
-                    "last_qty_available_change", True
-                ),
-            }
+            params = dict(
+                kwargs,
+                **{
+                    "cut_date": kwargs.get("cut_date")
+                    .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
+                    .strftime("%Y-%m-%d %H:%M:%S"),
+                    "end_date": datetime.now(
+                        tz=timezone(self.setting.get("TIMEZONE", "UTC"))
+                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                },
+            )
 
             if kwargs.get("item_types"):
                 params.update({"item_types": kwargs.get("item_types")})
@@ -229,10 +229,10 @@ class NSAgency(Agency):
             "src_id": raw_asset[self.setting["src_metadata"][tx_type]["src_id"]],
             "created_at": raw_asset[
                 self.setting["src_metadata"][tx_type]["created_at"]
-            ],
+            ].astimezone(timezone("UTC")),
             "updated_at": raw_asset[
                 self.setting["src_metadata"][tx_type]["updated_at"]
-            ],
+            ].astimezone(timezone("UTC")),
         }
         try:
             if tx_type == "product":
@@ -307,15 +307,17 @@ class NSAgency(Agency):
 
     def tx_persons_src(self, **kwargs):
         try:
-            params = {
-                "cut_date": kwargs.get("cut_date").strftime("%Y-%m-%d %H:%M:%S"),
-                "end_date": datetime.now(
-                    tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                ).strftime("%Y-%m-%d %H:%M:%S"),
-                "limit": int(kwargs.get("limit", 100)),
-                "hours": float(kwargs.get("hours", 0)),
-                "subsidiary": kwargs.get("subsidiary")
-            }
+            params = dict(
+                kwargs,
+                **{
+                    "cut_date": kwargs.get("cut_date")
+                    .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
+                    .strftime("%Y-%m-%d %H:%M:%S"),
+                    "end_date": datetime.now(
+                        tz=timezone(self.setting.get("TIMEZONE", "UTC"))
+                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                },
+            )
 
             record_type = self.get_record_type(kwargs.get("tx_type"))
             assert record_type is not None, f"{kwargs.get('tx_type')} is not supported."
@@ -344,10 +346,10 @@ class NSAgency(Agency):
             "src_id": raw_person[self.setting["src_metadata"][tx_type]["src_id"]],
             "created_at": raw_person[
                 self.setting["src_metadata"][tx_type]["created_at"]
-            ],
+            ].astimezone(timezone("UTC")),
             "updated_at": raw_person[
                 self.setting["src_metadata"][tx_type]["updated_at"]
-            ],
+            ].astimezone(timezone("UTC")),
         }
         try:
             person.update(
