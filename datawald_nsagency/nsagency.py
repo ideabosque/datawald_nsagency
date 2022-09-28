@@ -78,7 +78,6 @@ class NSAgency(Agency):
                 end = datetime.strptime(
                     params.get("cut_date"), "%Y-%m-%dT%H:%M:%S%z"
                 ) + timedelta(hours=hours)
-                # end = end.replace(tzinfo=timezone(self.setting.get("TIMEZONE", "UTC")))
                 if hours == 0.0:
                     return records
                 elif len(records) >= 1 or end >= current:
