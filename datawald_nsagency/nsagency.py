@@ -76,9 +76,9 @@ class NSAgency(Agency):
                 self.logger.info(params)
                 records = funct(record_type, **params)
                 end = datetime.strptime(
-                    params.get("cut_date"), "%Y-%m-%d %H:%M:%S"
+                    params.get("cut_date"), "%Y-%m-%dT%H:%M:%S%z"
                 ) + timedelta(hours=hours)
-                end = end.replace(tzinfo=timezone(self.setting.get("TIMEZONE", "UTC")))
+                # end = end.replace(tzinfo=timezone(self.setting.get("TIMEZONE", "UTC")))
                 if hours == 0.0:
                     return records
                 elif len(records) >= 1 or end >= current:
@@ -119,10 +119,10 @@ class NSAgency(Agency):
                 **{
                     "cut_date": kwargs.get("cut_date")
                     .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
-                    .strftime("%Y-%m-%d %H:%M:%S"),
+                    .strftime("%Y-%m-%dT%H:%M:%S%z"),
                     "end_date": datetime.now(
                         tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                    ).strftime("%Y-%m-%dT%H:%M:%S%z"),
                 },
             )
 
@@ -183,10 +183,10 @@ class NSAgency(Agency):
                 **{
                     "cut_date": kwargs.get("cut_date")
                     .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
-                    .strftime("%Y-%m-%d %H:%M:%S"),
+                    .strftime("%Y-%m-%dT%H:%M:%S%z"),
                     "end_date": datetime.now(
                         tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                    ).strftime("%Y-%m-%dT%H:%M:%S%z"),
                 },
             )
 
@@ -312,10 +312,10 @@ class NSAgency(Agency):
                 **{
                     "cut_date": kwargs.get("cut_date")
                     .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
-                    .strftime("%Y-%m-%d %H:%M:%S"),
+                    .strftime("%Y-%m-%dT%H:%M:%S%z"),
                     "end_date": datetime.now(
                         tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                    ).strftime("%Y-%m-%dT%H:%M:%S%z"),
                 },
             )
 
