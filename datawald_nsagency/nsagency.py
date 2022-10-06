@@ -286,7 +286,7 @@ class NSAgency(Agency):
 
         inventory_number["locations"] = [
             location
-            for location in inventory_number["locations"]
+            for location in inventory_number.get("locations", [])
             if sum(value for value in location.values() if type(value) != str) != 0
         ]
 
