@@ -57,6 +57,7 @@ class NSAgency(Agency):
             "itemreceipt": "itemReceipt",
             "billcredit": "vendorCredit",
             "payment": "vendorPayment",
+            "inventoryAdjustment": "inventoryAdjustment",
             "customer": "customer",
             "company": "customer",
             "vendor": "vendor",
