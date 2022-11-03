@@ -58,6 +58,7 @@ class NSAgency(Agency):
             "billcredit": "vendorCredit",
             "payment": "vendorPayment",
             "inventoryAdjustment": "inventoryAdjustment",
+            "creditMemo": "creditMemo",
             "customer": "customer",
             "company": "customer",
             "vendor": "vendor",
@@ -78,7 +79,7 @@ class NSAgency(Agency):
                 records = funct(record_type, **params)
                 end = datetime.strptime(
                     params.get("cut_date"), "%Y-%m-%dT%H:%M:%S%z"
-                ) + timedelta(hours=hours)
+                ) + timedelta(hours=params["hours"])
                 if hours == 0.0:
                     return records
                 elif len(records) >= 1 or end >= current:
