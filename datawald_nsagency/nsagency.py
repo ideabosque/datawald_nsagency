@@ -19,6 +19,8 @@ class NSAgency(Agency):
         self.soap_connector = SOAPConnector(logger, **setting)
         self.datawald = DatawaldConnector(logger, **setting)
         Agency.__init__(self, logger, datawald=self.datawald)
+        if setting.get("tx_type"):
+            Agency.tx_type = setting.get("tx_type")
 
         self.map = setting.get("TXMAP", {})
         self.join = setting.get("JOIN", {"base": [], "lines": []})
@@ -46,29 +48,7 @@ class NSAgency(Agency):
         return None
 
     def get_record_type(self, tx_type):
-        data_type = {
-            "order": "salesOrder",
-            "invoice": "invoice",
-            "purchaseorder": "purchaseOrder",
-            "quote": "estimate",
-            "opportunity": "opportunity",
-            "rma": "returnAuthorization",
-            "itemfulfillment": "itemFulfillment",
-            "itemreceipt": "itemReceipt",
-            "billcredit": "vendorCredit",
-            "payment": "vendorPayment",
-            "inventoryAdjustment": "inventoryAdjustment",
-            "creditMemo": "creditMemo",
-            "customer": "customer",
-            "company": "customer",
-            "vendor": "vendor",
-            "contact": "contact",
-            "product": "product",
-            "inventory": "inventory",
-            "inventorylot": "inventoryLot",
-            "pricelevel": "priceLevel",
-        }
-        return data_type.get(tx_type)
+        return self.setting["data_type"].get(tx_type)
 
     def get_records(self, funct, record_type, **params):
         try:
