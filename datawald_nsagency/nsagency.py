@@ -7,7 +7,7 @@ __author__ = "bibow"
 import traceback
 from datawald_agency import Agency
 from datawald_connector import DatawaldConnector
-from suitetalk_connector import SOAPConnector
+from suitetalk_connector import SOAPConnector, RESTConnector
 from datetime import datetime, timedelta
 from pytz import timezone
 
@@ -17,6 +17,7 @@ class NSAgency(Agency):
         self.logger = logger
         self.setting = setting
         self.soap_connector = SOAPConnector(logger, **setting)
+        self.rest_connector = RESTConnector(logger, **setting)
         self.datawald = DatawaldConnector(logger, **setting)
         Agency.__init__(self, logger, datawald=self.datawald)
         if setting.get("tx_type"):
