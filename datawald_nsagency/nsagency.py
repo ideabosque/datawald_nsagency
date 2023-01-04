@@ -4,7 +4,7 @@ from __future__ import print_function
 
 __author__ = "bibow"
 
-import traceback
+import traceback, boto3, json
 from datawald_agency import Agency
 from datawald_connector import DatawaldConnector
 from suitetalk_connector import SOAPConnector, RESTConnector
@@ -23,8 +23,30 @@ class NSAgency(Agency):
         if setting.get("tx_type"):
             Agency.tx_type = setting.get("tx_type")
 
-        self.map = setting.get("TXMAP", {})
+        if setting.get("TXMAP_BUCKET") and setting.get("TXMAP_KEY"):
+            obj = self.s3(setting).get_object(
+                Bucket=setting.get("TXMAP_BUCKET"), Key=setting.get("TXMAP_KEY")
+            )
+            self.map = json.loads(obj["Body"].read().decode("utf8"))
+        else:
+            self.map = setting.get("TXMAP", {})
+
         self.join = setting.get("JOIN", {"base": [], "lines": []})
+
+    def s3(self, setting):
+        if (
+            setting.get("region_name")
+            and setting.get("aws_access_key_id")
+            and setting.get("aws_secret_access_key")
+        ):
+            return boto3.client(
+                "s3",
+                region_name=setting.get("region_name"),
+                aws_access_key_id=setting.get("aws_access_key_id"),
+                aws_secret_access_key=setting.get("aws_secret_access_key"),
+            )
+        else:
+            return boto3.client("s3")
 
     @property
     def payment_methods(self):
