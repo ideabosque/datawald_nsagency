@@ -4,10 +4,10 @@ from __future__ import print_function
 
 __author__ = "bibow"
 
-import traceback
+import traceback, boto3, json
 from datawald_agency import Agency
 from datawald_connector import DatawaldConnector
-from suitetalk_connector import SOAPConnector
+from suitetalk_connector import SOAPConnector, RESTConnector
 from datetime import datetime, timedelta
 from pytz import timezone
 
@@ -17,11 +17,36 @@ class NSAgency(Agency):
         self.logger = logger
         self.setting = setting
         self.soap_connector = SOAPConnector(logger, **setting)
+        self.rest_connector = RESTConnector(logger, **setting)
         self.datawald = DatawaldConnector(logger, **setting)
         Agency.__init__(self, logger, datawald=self.datawald)
+        if setting.get("tx_type"):
+            Agency.tx_type = setting.get("tx_type")
 
-        self.map = setting.get("TXMAP", {})
+        if setting.get("TXMAP_BUCKET") and setting.get("TXMAP_KEY"):
+            obj = self.s3(setting).get_object(
+                Bucket=setting.get("TXMAP_BUCKET"), Key=setting.get("TXMAP_KEY")
+            )
+            self.map = json.loads(obj["Body"].read().decode("utf8"))
+        else:
+            self.map = setting.get("TXMAP", {})
+
         self.join = setting.get("JOIN", {"base": [], "lines": []})
+
+    def s3(self, setting):
+        if (
+            setting.get("region_name")
+            and setting.get("aws_access_key_id")
+            and setting.get("aws_secret_access_key")
+        ):
+            return boto3.client(
+                "s3",
+                region_name=setting.get("region_name"),
+                aws_access_key_id=setting.get("aws_access_key_id"),
+                aws_secret_access_key=setting.get("aws_secret_access_key"),
+            )
+        else:
+            return boto3.client("s3")
 
     @property
     def payment_methods(self):
@@ -46,27 +71,7 @@ class NSAgency(Agency):
         return None
 
     def get_record_type(self, tx_type):
-        data_type = {
-            "order": "salesOrder",
-            "invoice": "invoice",
-            "purchaseorder": "purchaseOrder",
-            "quote": "estimate",
-            "opportunity": "opportunity",
-            "rma": "returnAuthorization",
-            "itemfulfillment": "itemFulfillment",
-            "itemreceipt": "itemReceipt",
-            "billcredit": "vendorCredit",
-            "payment": "vendorPayment",
-            "customer": "customer",
-            "company": "customer",
-            "vendor": "vendor",
-            "contact": "contact",
-            "product": "product",
-            "inventory": "inventory",
-            "inventorylot": "inventoryLot",
-            "pricelevel": "priceLevel",
-        }
-        return data_type.get(tx_type)
+        return self.setting["data_type"].get(tx_type)
 
     def get_records(self, funct, record_type, **params):
         try:
@@ -76,9 +81,8 @@ class NSAgency(Agency):
                 self.logger.info(params)
                 records = funct(record_type, **params)
                 end = datetime.strptime(
-                    params.get("cut_date"), "%Y-%m-%d %H:%M:%S"
-                ) + timedelta(hours=hours)
-                end = end.replace(tzinfo=timezone(self.setting.get("TIMEZONE", "UTC")))
+                    params.get("cut_date"), "%Y-%m-%dT%H:%M:%S%z"
+                ) + timedelta(hours=params["hours"])
                 if hours == 0.0:
                     return records
                 elif len(records) >= 1 or end >= current:
@@ -119,10 +123,10 @@ class NSAgency(Agency):
                 **{
                     "cut_date": kwargs.get("cut_date")
                     .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
-                    .strftime("%Y-%m-%d %H:%M:%S"),
+                    .strftime("%Y-%m-%dT%H:%M:%S%z"),
                     "end_date": datetime.now(
                         tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                    ).strftime("%Y-%m-%dT%H:%M:%S%z"),
                 },
             )
 
@@ -183,10 +187,10 @@ class NSAgency(Agency):
                 **{
                     "cut_date": kwargs.get("cut_date")
                     .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
-                    .strftime("%Y-%m-%d %H:%M:%S"),
+                    .strftime("%Y-%m-%dT%H:%M:%S%z"),
                     "end_date": datetime.now(
                         tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                    ).strftime("%Y-%m-%dT%H:%M:%S%z"),
                 },
             )
 
@@ -287,7 +291,7 @@ class NSAgency(Agency):
 
         inventory_number["locations"] = [
             location
-            for location in inventory_number["locations"]
+            for location in inventory_number.get("locations", [])
             if sum(value for value in location.values() if type(value) != str) != 0
         ]
 
@@ -312,10 +316,10 @@ class NSAgency(Agency):
                 **{
                     "cut_date": kwargs.get("cut_date")
                     .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
-                    .strftime("%Y-%m-%d %H:%M:%S"),
+                    .strftime("%Y-%m-%dT%H:%M:%S%z"),
                     "end_date": datetime.now(
                         tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                    ).strftime("%Y-%m-%dT%H:%M:%S%z"),
                 },
             )
 
