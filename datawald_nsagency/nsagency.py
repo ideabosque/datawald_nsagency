@@ -376,13 +376,9 @@ class NSAgency(Agency):
             transaction["data"]["paymentMethod"] = self.payment_methods[
                 transaction["data"]["paymentMethod"]
             ]
-            terms = self.get_term(
-                transaction["data"]["paymentMethod"]
-            )
+            terms = self.get_term(transaction["data"]["paymentMethod"])
             if terms is not None:
-                transaction["data"]["terms"] = self.get_term(
-                    transaction["data"]["paymentMethod"]
-                )
+                transaction["data"]["terms"] = terms
 
         # Map the shipping method.
         if transaction["data"].get("shipMethod"):
