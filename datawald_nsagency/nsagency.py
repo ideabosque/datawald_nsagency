@@ -435,7 +435,6 @@ class NSAgency(Agency):
         for person in persons:
             tx_type = person.get("tx_type_src_id").split("-")[0]
             try:
-
                 record_type = self.get_record_type(tx_type)
                 assert record_type is not None, f"{tx_type} is not supported."
 
