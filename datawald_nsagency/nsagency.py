@@ -73,26 +73,163 @@ class NSAgency(Agency):
     def get_record_type(self, tx_type):
         return self.setting["data_type"].get(tx_type)
 
-    def get_records(self, funct, record_type, **params):
+    def tx_entities_src_decorator():
+        def decorator(func):
+            def wrapper(self, *args, **kwargs):
+                try:
+                    hours = float(kwargs.get("hours", 0.0))
+                    cut_date = kwargs.get("cut_date").astimezone(
+                        timezone(self.setting.get("TIMEZONE", "UTC"))
+                    )
+                    end_date = datetime.now(
+                        tz=timezone(self.setting.get("TIMEZONE", "UTC"))
+                    )
+
+                    if hours > 0.0:
+                        end_date = cut_date + timedelta(hours=hours)
+
+                    kwargs = dict(
+                        kwargs,
+                        **{
+                            "cut_date": cut_date.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                            "end_date": end_date.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                        },
+                    )
+
+                    tx_entity_src, raw_entities = func(self, *args, **kwargs)
+
+                    if kwargs.get("tx_type") == "product":
+                        kwargs.update(
+                            {"metadatas": self.get_product_metadatas(**kwargs)}
+                        )
+
+                    transactions = list(
+                        map(
+                            lambda raw_entity: tx_entity_src(raw_entity, **kwargs),
+                            raw_entities,
+                        )
+                    )
+                    return transactions
+                except Exception:
+                    self.logger.info(kwargs)
+                    log = traceback.format_exc()
+                    self.logger.exception(log)
+                    raise
+
+            return wrapper
+
+        return decorator
+
+    def tx_entity_src_decorator():
+        def decorator(func):
+            def wrapper(self, *args, **kwargs):
+                tx_type = kwargs.get("tx_type")
+                kwargs.update(
+                    {
+                        "entity": {
+                            "src_id": args[0][
+                                self.setting["src_metadata"][tx_type]["src_id"]
+                            ],
+                            "created_at": args[0][
+                                self.setting["src_metadata"][tx_type]["created_at"]
+                            ].astimezone(timezone("UTC")),
+                            "updated_at": args[0][
+                                self.setting["src_metadata"][tx_type]["updated_at"]
+                            ].astimezone(timezone("UTC")),
+                        }
+                    }
+                )
+
+                entity = func(self, *args, **kwargs)
+                return entity
+
+            return wrapper
+
+        return decorator
+
+    def insert_update_decorator():
+        def decorator(func):
+            def wrapper(self, *args, **kwargs):
+                tx_type = args[0].get("tx_type_src_id").split("-")[0]
+                try:
+                    record_type = self.get_record_type(tx_type)
+                    assert record_type is not None, f"{tx_type} is not supported."
+
+                    kwargs.update({"record_type": record_type})
+                    func(self, *args, **kwargs)
+                except Exception:
+                    log = traceback.format_exc()
+                    args[0].update({"tx_status": "F", "tx_note": log, "tgt_id": "####"})
+                    self.logger.exception(
+                        f"Failed to create order: {args[0]['tx_type_src_id']} with error: {log}"
+                    )
+
+            return wrapper
+
+        return decorator
+
+    def get_records_all(self, record_type, result_funct, funct, **params):
+        limit_pages = self.setting.get("LIMIT_PAGES", 3)
+        result = result_funct(record_type, **params)
+        if result["total_records"] == 0:
+            return []
+
+        search_id = result["search_id"]
+        total_records = result["total_records"]
+        total_pages = result["total_pages"]
+        page_index = result["page_index"]
+        records = result["records"]
+
+        self.logger.info(
+            f"Total_records/Total_pages {total_records}/{total_pages}: {len(records)} records at page {page_index}."
+        )
+
+        limit_pages = total_pages if limit_pages == 0 else min(limit_pages, total_pages)
+
+        while page_index < limit_pages:
+            page_index += 1
+            more_result = result_funct(
+                record_type,
+                **dict(params, **{"search_id": search_id, "page_index": page_index}),
+            )
+            records.extend(more_result["records"])
+            self.logger.info(
+                f"Total_records/Total_pages {total_records}/{total_pages}: {len(more_result['records'])}/{len(records)} records at page {page_index}."
+            )
+
+        return funct(record_type, records, **params)
+
+    def get_records(self, record_type, result_funct, funct, **params):
         try:
-            current = datetime.now(tz=timezone(self.setting.get("TIMEZONE", "UTC")))
+            current_time = datetime.now(
+                tz=timezone(self.setting.get("TIMEZONE", "UTC"))
+            )
             hours = params.get("hours", 0.0)
+
+            if hours == 0.0:
+                end_time = current_time
+            else:
+                cut_date = params.get("cut_date")
+                end_time = datetime.strptime(
+                    cut_date, "%Y-%m-%dT%H:%M:%S%z"
+                ) + timedelta(hours=hours)
+
             while True:
                 self.logger.info(params)
-                records = funct(record_type, **params)
-                end = datetime.strptime(
-                    params.get("cut_date"), "%Y-%m-%dT%H:%M:%S%z"
-                ) + timedelta(hours=params["hours"])
-                if hours == 0.0:
+
+                records = self.get_records_all(
+                    record_type, result_funct, funct, **params
+                )
+
+                if len(records) >= 1 or end_time >= current_time:
                     return records
-                elif len(records) >= 1 or end >= current:
-                    return records
-                else:
-                    params["hours"] = params["hours"] + hours
-        except Exception:
+
+                end_time += timedelta(hours=hours)
+                params.update({"end_date": end_time.strftime("%Y-%m-%dT%H:%M:%S%z")})
+        except Exception as e:
             log = traceback.format_exc()
             self.logger.exception(log)
-            raise
+            raise e
 
     def transform_data(self, record, metadatas):
         return super(NSAgency, self).transform_data(
@@ -115,53 +252,25 @@ class NSAgency(Agency):
             value = _custom_fields[0]["value"]
         return value
 
+    @tx_entities_src_decorator()
     def tx_transactions_src(self, **kwargs):
-        try:
-            record_type = self.get_record_type(kwargs.get("tx_type"))
-            params = dict(
-                kwargs,
-                **{
-                    "cut_date": kwargs.get("cut_date")
-                    .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
-                    .strftime("%Y-%m-%dT%H:%M:%S%z"),
-                    "end_date": datetime.now(
-                        tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                    ).strftime("%Y-%m-%dT%H:%M:%S%z"),
-                },
-            )
+        record_type = self.get_record_type(kwargs.get("tx_type"))
+        assert record_type is not None, f"{kwargs.get('tx_type')} is not supported."
 
-            raw_transactions = self.get_records(
-                self.soap_connector.get_transactions, record_type, **params
-            )
+        raw_transactions = self.get_records(
+            record_type,
+            self.soap_connector.get_transaction_result,
+            self.soap_connector.get_transactions,
+            **kwargs,
+        )
 
-            transactions = list(
-                map(
-                    lambda raw_transaction: self.tx_transaction_src(
-                        raw_transaction, **kwargs
-                    ),
-                    raw_transactions,
-                )
-            )
+        return self.tx_transaction_src, raw_transactions
 
-            return transactions
-        except Exception:
-            self.logger.info(kwargs)
-            log = traceback.format_exc()
-            self.logger.exception(log)
-            raise
-
+    @tx_entity_src_decorator()
     def tx_transaction_src(self, raw_transaction, **kwargs):
         tx_type = kwargs.get("tx_type")
         target = kwargs.get("target")
-        transaction = {
-            "src_id": raw_transaction[self.setting["src_metadata"][tx_type]["src_id"]],
-            "created_at": raw_transaction[
-                self.setting["src_metadata"][tx_type]["created_at"]
-            ].astimezone(timezone("UTC")),
-            "updated_at": raw_transaction[
-                self.setting["src_metadata"][tx_type]["updated_at"]
-            ].astimezone(timezone("UTC")),
-        }
+        transaction = kwargs.get("entity")
         try:
             transaction.update(
                 {
@@ -180,64 +289,25 @@ class NSAgency(Agency):
 
         return transaction
 
+    @tx_entities_src_decorator()
     def tx_assets_src(self, **kwargs):
-        try:
-            params = dict(
-                kwargs,
-                **{
-                    "cut_date": kwargs.get("cut_date")
-                    .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
-                    .strftime("%Y-%m-%dT%H:%M:%S%z"),
-                    "end_date": datetime.now(
-                        tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                    ).strftime("%Y-%m-%dT%H:%M:%S%z"),
-                },
-            )
+        record_type = self.get_record_type(kwargs.get("tx_type"))
+        assert record_type is not None, f"{kwargs.get('tx_type')} is not supported."
 
-            if kwargs.get("item_types"):
-                params.update({"item_types": kwargs.get("item_types")})
+        raw_assets = self.get_records(
+            record_type,
+            self.soap_connector.get_item_result,
+            self.soap_connector.get_items,
+            **kwargs,
+        )
 
-            record_type = self.get_record_type(kwargs.get("tx_type"))
-            assert record_type is not None, f"{kwargs.get('tx_type')} is not supported."
+        return self.tx_asset_src, raw_assets
 
-            if record_type == "product":
-                params.update(
-                    {
-                        "active_only": kwargs.get("active_only", False),
-                        "vendor_name": kwargs.get("vendor_name"),
-                    }
-                )
-                kwargs.update({"metadatas": self.get_product_metadatas(**kwargs)})
-
-            raw_assets = self.get_records(
-                self.soap_connector.get_items, record_type, **params
-            )
-
-            assets = list(
-                map(
-                    lambda raw_asset: self.tx_asset_src(raw_asset, **kwargs),
-                    raw_assets,
-                )
-            )
-            return assets
-        except Exception:
-            self.logger.info(kwargs)
-            log = traceback.format_exc()
-            self.logger.exception(log)
-            raise
-
+    @tx_entity_src_decorator()
     def tx_asset_src(self, raw_asset, **kwargs):
         tx_type = kwargs.get("tx_type")
         target = kwargs.get("target")
-        asset = {
-            "src_id": raw_asset[self.setting["src_metadata"][tx_type]["src_id"]],
-            "created_at": raw_asset[
-                self.setting["src_metadata"][tx_type]["created_at"]
-            ].astimezone(timezone("UTC")),
-            "updated_at": raw_asset[
-                self.setting["src_metadata"][tx_type]["updated_at"]
-            ].astimezone(timezone("UTC")),
-        }
+        asset = kwargs.get("entity")
         try:
             if tx_type == "product":
                 data = self.transform_data(raw_asset, kwargs.get("metadatas"))
@@ -309,52 +379,25 @@ class NSAgency(Agency):
             ],
         }
 
+    @tx_entities_src_decorator()
     def tx_persons_src(self, **kwargs):
-        try:
-            params = dict(
-                kwargs,
-                **{
-                    "cut_date": kwargs.get("cut_date")
-                    .astimezone(timezone(self.setting.get("TIMEZONE", "UTC")))
-                    .strftime("%Y-%m-%dT%H:%M:%S%z"),
-                    "end_date": datetime.now(
-                        tz=timezone(self.setting.get("TIMEZONE", "UTC"))
-                    ).strftime("%Y-%m-%dT%H:%M:%S%z"),
-                },
-            )
+        record_type = self.get_record_type(kwargs.get("tx_type"))
+        assert record_type is not None, f"{kwargs.get('tx_type')} is not supported."
 
-            record_type = self.get_record_type(kwargs.get("tx_type"))
-            assert record_type is not None, f"{kwargs.get('tx_type')} is not supported."
+        raw_persons = self.get_records(
+            record_type,
+            self.soap_connector.get_person_result,
+            self.soap_connector.get_persons,
+            **kwargs,
+        )
 
-            raw_persons = self.get_records(
-                self.soap_connector.get_persons, record_type, **params
-            )
+        return self.tx_person_src, raw_persons
 
-            persons = list(
-                map(
-                    lambda raw_person: self.tx_person_src(raw_person, **kwargs),
-                    raw_persons,
-                )
-            )
-
-            return persons
-        except Exception:
-            log = traceback.format_exc()
-            self.logger.exception(log)
-            raise
-
+    @tx_entity_src_decorator()
     def tx_person_src(self, raw_person, **kwargs):
         tx_type = kwargs.get("tx_type")
         target = kwargs.get("target")
-        person = {
-            "src_id": raw_person[self.setting["src_metadata"][tx_type]["src_id"]],
-            "created_at": raw_person[
-                self.setting["src_metadata"][tx_type]["created_at"]
-            ].astimezone(timezone("UTC")),
-            "updated_at": raw_person[
-                self.setting["src_metadata"][tx_type]["updated_at"]
-            ].astimezone(timezone("UTC")),
-        }
+        person = kwargs.get("entity")
         try:
             person.update(
                 {"data": self.transform_data(raw_person, self.map[target].get(tx_type))}
@@ -404,24 +447,15 @@ class NSAgency(Agency):
 
     def insert_update_transactions(self, transactions):
         for transaction in transactions:
-            tx_type = transaction.get("tx_type_src_id").split("-")[0]
-            try:
-                record_type = self.get_record_type(tx_type)
-                assert (
-                    record_type is not None
-                ), f"{transaction['tx_type_src_id']}/{tx_type} is not supported."
-
-                transaction["tgt_id"] = self.soap_connector.insert_update_transaction(
-                    record_type, transaction["data"]
-                )
-                transaction["tx_status"] = "S"
-            except Exception:
-                log = traceback.format_exc()
-                transaction.update({"tx_status": "F", "tx_note": log, "tgt_id": "####"})
-                self.logger.exception(
-                    f"Failed to create order: {transaction['tx_type_src_id']} with error: {log}"
-                )
+            self.insert_update_transaction(transaction)
         return transactions
+
+    @insert_update_decorator()
+    def insert_update_transaction(self, transaction, record_type=None):
+        transaction["tgt_id"] = self.soap_connector.insert_update_transaction(
+            record_type, transaction["data"]
+        )
+        transaction["tx_status"] = "S"
 
     def tx_person_tgt(self, person):
         tx_type = person.get("tx_type_src_id").split("-")[0]
@@ -433,19 +467,12 @@ class NSAgency(Agency):
 
     def insert_update_persons(self, persons):
         for person in persons:
-            tx_type = person.get("tx_type_src_id").split("-")[0]
-            try:
-                record_type = self.get_record_type(tx_type)
-                assert record_type is not None, f"{tx_type} is not supported."
-
-                person["tgt_id"] = self.soap_connector.insert_update_person(
-                    record_type, person["data"]
-                )
-                person["tx_status"] = "S"
-            except Exception:
-                log = traceback.format_exc()
-                person.update({"tx_status": "F", "tx_note": log, "tgt_id": "####"})
-                self.logger.exception(
-                    f"Failed to create person: {person['tx_type_src_id']} with error: {log}"
-                )
+            self.insert_update_person(person)
         return persons
+
+    @insert_update_decorator()
+    def insert_update_person(self, person, record_type=None):
+        person["tgt_id"] = self.soap_connector.insert_update_person(
+            record_type, person["data"]
+        )
+        person["tx_status"] = "S"
