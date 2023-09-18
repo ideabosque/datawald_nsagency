@@ -74,6 +74,7 @@ class NSAgency(Agency):
     def get_record_type(self, tx_type):
         return self.setting["data_type"].get(tx_type)
 
+    ## We can move the decorator to the uplevel.
     def tx_entities_src_decorator():
         def decorator(func):
             def wrapper(self, *args, **kwargs):
@@ -121,6 +122,7 @@ class NSAgency(Agency):
 
         return decorator
 
+    ## We can move the function to the uplevel.
     def tx_entity_src_decorator():
         def decorator(func):
             def wrapper(self, *args, **kwargs):
@@ -148,6 +150,7 @@ class NSAgency(Agency):
 
         return decorator
 
+    ## We can move the function to the uplevel.
     def insert_update_decorator():
         def decorator(func):
             def wrapper(self, *args, **kwargs):
@@ -289,6 +292,7 @@ class NSAgency(Agency):
             value = _custom_fields[0]["value"]
         return value
 
+    ## We can move the function to the uplevel.
     @tx_entities_src_decorator()
     def tx_transactions_src(self, **kwargs):
         record_type = self.get_record_type(kwargs.get("tx_type"))
@@ -303,6 +307,7 @@ class NSAgency(Agency):
 
         return self.tx_transaction_src, raw_transactions
 
+    ## We can move the function to the uplevel.
     @tx_entity_src_decorator()
     def tx_transaction_src(self, raw_transaction, **kwargs):
         tx_type = kwargs.get("tx_type")
@@ -329,6 +334,7 @@ class NSAgency(Agency):
 
         return transaction
 
+    ## We can move the function to the uplevel.
     @tx_entities_src_decorator()
     def tx_assets_src(self, **kwargs):
         record_type = self.get_record_type(kwargs.get("tx_type"))
@@ -343,6 +349,7 @@ class NSAgency(Agency):
 
         return self.tx_asset_src, raw_assets
 
+    ## We can move the function to the uplevel.
     @tx_entity_src_decorator()
     def tx_asset_src(self, raw_asset, **kwargs):
         tx_type = kwargs.get("tx_type")
@@ -422,6 +429,7 @@ class NSAgency(Agency):
             ],
         }
 
+    ## We can move the function to the uplevel.
     @tx_entities_src_decorator()
     def tx_persons_src(self, **kwargs):
         record_type = self.get_record_type(kwargs.get("tx_type"))
@@ -436,6 +444,7 @@ class NSAgency(Agency):
 
         return self.tx_person_src, raw_persons
 
+    ## We can move the function to the uplevel.
     @tx_entity_src_decorator()
     def tx_person_src(self, raw_person, **kwargs):
         tx_type = kwargs.get("tx_type")
