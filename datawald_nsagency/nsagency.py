@@ -4,7 +4,8 @@ from __future__ import print_function
 
 __author__ = "bibow"
 
-import traceback, boto3, json
+import traceback, boto3, json, asyncio
+import concurrent.futures
 from datawald_agency import Agency
 from datawald_connector import DatawaldConnector
 from suitetalk_connector import SOAPConnector, RESTConnector
@@ -168,6 +169,27 @@ class NSAgency(Agency):
 
         return decorator
 
+    # Define your asynchronous function here (async_worker)
+    async def async_worker(self, result_funct, record_type, **kwargs):
+        # Your asynchronous code here
+        result = result_funct(record_type, **kwargs)
+
+        total_records = result["total_records"]
+        total_pages = result["total_pages"]
+        page_index = result["page_index"]
+        records = result["records"]
+
+        self.logger.info(
+            f"Total_records/Total_pages {total_records}/{total_pages}: {len(records)} records at page {page_index}."
+        )
+
+        return result
+
+    # Define a wrapper worker for the asynchronous task
+    async def dispatch_async_worker_wrapper(self, result_funct, record_type, **kwargs):
+        result = await self.async_worker(result_funct, record_type, **kwargs)
+        return result
+
     def get_records_all(self, record_type, result_funct, funct, **params):
         limit_pages = self.setting.get("LIMIT_PAGES", 3)
         result = result_funct(record_type, **params)
@@ -186,16 +208,31 @@ class NSAgency(Agency):
 
         limit_pages = total_pages if limit_pages == 0 else min(limit_pages, total_pages)
 
-        while page_index < limit_pages:
-            page_index += 1
-            more_result = result_funct(
-                record_type,
-                **dict(params, **{"search_id": search_id, "page_index": page_index}),
-            )
-            records.extend(more_result["records"])
-            self.logger.info(
-                f"Total_records/Total_pages {total_records}/{total_pages}: {len(more_result['records'])}/{len(records)} records at page {page_index}."
-            )
+        if page_index < limit_pages:
+            tasks = []
+            # Create a multiprocessing Pool
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                # Dispatch asynchronous tasks to different processes for each page index
+                for i in range(2, limit_pages + 1):
+                    tasks.append(
+                        executor.submit(
+                            asyncio.run,
+                            self.dispatch_async_worker_wrapper(
+                                result_funct,
+                                record_type,
+                                **dict(
+                                    params, **{"search_id": search_id, "page_index": i}
+                                ),
+                            ),
+                        )
+                    )
+
+            # Gather the tasks' results from the processes
+            gathered_results = [task.result() for task in tasks]
+            record_list = [entry["records"] for entry in gathered_results]
+            records = records + [
+                record for sublist in record_list for record in sublist
+            ]
 
         return funct(record_type, records, **params)
 
@@ -272,6 +309,7 @@ class NSAgency(Agency):
         target = kwargs.get("target")
         transaction = kwargs.get("entity")
         try:
+            self.logger.info(f"Transferring {tx_type} for {transaction['src_id']} at {transaction['updated_at']}.")
             transaction.update(
                 {
                     "data": self.transform_data(
@@ -309,6 +347,7 @@ class NSAgency(Agency):
         target = kwargs.get("target")
         asset = kwargs.get("entity")
         try:
+            self.logger.info(f"Transferring {tx_type} for {asset['src_id']} at {asset['updated_at']}.")
             if tx_type == "product":
                 data = self.transform_data(raw_asset, kwargs.get("metadatas"))
             else:
