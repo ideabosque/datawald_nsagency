@@ -104,13 +104,13 @@ class NSAgency(Agency):
                             {"metadatas": self.get_product_metadatas(**kwargs)}
                         )
 
-                    transactions = list(
+                    entities = list(
                         map(
                             lambda raw_entity: tx_entity_src(raw_entity, **kwargs),
                             raw_entities,
                         )
                     )
-                    return transactions
+                    return entities
                 except Exception:
                     self.logger.info(kwargs)
                     log = traceback.format_exc()
@@ -309,7 +309,9 @@ class NSAgency(Agency):
         target = kwargs.get("target")
         transaction = kwargs.get("entity")
         try:
-            self.logger.info(f"Transferring {tx_type} for {transaction['src_id']} at {transaction['updated_at']}.")
+            self.logger.info(
+                f"Transferring {tx_type} for {transaction['src_id']} at {transaction['updated_at']}."
+            )
             transaction.update(
                 {
                     "data": self.transform_data(
@@ -347,7 +349,9 @@ class NSAgency(Agency):
         target = kwargs.get("target")
         asset = kwargs.get("entity")
         try:
-            self.logger.info(f"Transferring {tx_type} for {asset['src_id']} at {asset['updated_at']}.")
+            self.logger.info(
+                f"Transferring {tx_type} for {asset['src_id']} at {asset['updated_at']}."
+            )
             if tx_type == "product":
                 data = self.transform_data(raw_asset, kwargs.get("metadatas"))
             else:
