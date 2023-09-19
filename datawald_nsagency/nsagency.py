@@ -175,18 +175,7 @@ class NSAgency(Agency):
     # Define your asynchronous function here (async_worker)
     async def async_worker(self, result_funct, record_type, **kwargs):
         # Your asynchronous code here
-        result = result_funct(record_type, **kwargs)
-
-        total_records = result["total_records"]
-        total_pages = result["total_pages"]
-        page_index = result["page_index"]
-        records = result["records"]
-
-        self.logger.info(
-            f"Total_records/Total_pages {total_records}/{total_pages}: {len(records)} records at page {page_index}."
-        )
-
-        return result
+        return result_funct(record_type, **kwargs)
 
     # Define a wrapper worker for the asynchronous task
     async def dispatch_async_worker_wrapper(self, result_funct, record_type, **kwargs):
@@ -199,19 +188,13 @@ class NSAgency(Agency):
         if result["total_records"] == 0:
             return []
 
-        search_id = result["search_id"]
-        total_records = result["total_records"]
-        total_pages = result["total_pages"]
-        page_index = result["page_index"]
-        records = result["records"]
-
-        self.logger.info(
-            f"Total_records/Total_pages {total_records}/{total_pages}: {len(records)} records at page {page_index}."
+        limit_pages = (
+            result["total_pages"]
+            if limit_pages == 0
+            else min(limit_pages, result["total_pages"])
         )
 
-        limit_pages = total_pages if limit_pages == 0 else min(limit_pages, total_pages)
-
-        if page_index < limit_pages:
+        if result["page_index"] < limit_pages:
             tasks = []
             # Create a multiprocessing Pool
             with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -224,7 +207,11 @@ class NSAgency(Agency):
                                 result_funct,
                                 record_type,
                                 **dict(
-                                    params, **{"search_id": search_id, "page_index": i}
+                                    params,
+                                    **{
+                                        "search_id": result["search_id"],
+                                        "page_index": i,
+                                    },
                                 ),
                             ),
                         )
@@ -233,7 +220,7 @@ class NSAgency(Agency):
             # Gather the tasks' results from the processes
             gathered_results = [task.result() for task in tasks]
             record_list = [entry["records"] for entry in gathered_results]
-            records = records + [
+            records = result["records"] + [
                 record for sublist in record_list for record in sublist
             ]
 
