@@ -107,7 +107,9 @@ class NSAgency(Agency):
 
                     # Create a pool of 10 processes
                     entities = []
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    with concurrent.futures.ThreadPoolExecutor(
+                        max_workers=10
+                    ) as executor:
                         result_iterator = executor.map(
                             lambda raw_entity: tx_entity_src(raw_entity, **kwargs),
                             raw_entities,
@@ -250,7 +252,7 @@ class NSAgency(Agency):
             completed_tasks += 1
             progress_percent = (completed_tasks / total_tasks) * 100
             self.logger.info(
-                f"Progress (get_records_all for{record_type}): {progress_percent:.2f}%"
+                f"Progress (get_records_all for {record_type}): {progress_percent:.2f}%"
             )
 
         record_list = [entry["records"] for entry in gathered_results]
