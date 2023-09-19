@@ -4,7 +4,7 @@ from __future__ import print_function
 
 __author__ = "bibow"
 
-import traceback, boto3, json, asyncio
+import traceback, boto3, json, asyncio, time
 import concurrent.futures
 from datawald_agency import Agency
 from datawald_connector import DatawaldConnector
@@ -105,12 +105,26 @@ class NSAgency(Agency):
                             {"metadatas": self.get_product_metadatas(**kwargs)}
                         )
 
-                    entities = list(
-                        map(
+                    # Create a pool of 10 processes
+                    entities = []
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                        result_iterator = executor.map(
                             lambda raw_entity: tx_entity_src(raw_entity, **kwargs),
                             raw_entities,
                         )
-                    )
+
+                        # Track progress and calculate the percentage as before
+                        total_items = len(raw_entities)
+                        processed_items = 0
+
+                        for result in result_iterator:
+                            entities.append(result)
+                            processed_items += 1
+                            progress_percent = (processed_items / total_items) * 100
+                            self.logger.info(
+                                f"Progress (transferring {kwargs.get('tx_type')}): {progress_percent:.2f}%"
+                            )
+
                     return entities
                 except Exception:
                     self.logger.info(kwargs)
@@ -127,6 +141,11 @@ class NSAgency(Agency):
         def decorator(func):
             def wrapper(self, *args, **kwargs):
                 tx_type = kwargs.get("tx_type")
+
+                self.logger.debug(
+                    f"Transferring {tx_type} for {args[0]['internalId']} at {time.strftime('%X')}."
+                )
+
                 kwargs.update(
                     {
                         "entity": {
@@ -219,8 +238,21 @@ class NSAgency(Agency):
                     )
                 )
 
+        # Track progress and calculate the percentage
+        total_tasks = len(tasks)
+        completed_tasks = 0
+
         # Gather the tasks' results from the processes
-        gathered_results = [task.result() for task in tasks]
+        gathered_results = []
+        for task in concurrent.futures.as_completed(tasks):
+            result = task.result()
+            gathered_results.append(result)
+            completed_tasks += 1
+            progress_percent = (completed_tasks / total_tasks) * 100
+            self.logger.info(
+                f"Progress (get_records_all for{record_type}): {progress_percent:.2f}%"
+            )
+
         record_list = [entry["records"] for entry in gathered_results]
         records = result["records"] + [
             record for sublist in record_list for record in sublist
@@ -303,9 +335,6 @@ class NSAgency(Agency):
         target = kwargs.get("target")
         transaction = kwargs.get("entity")
         try:
-            self.logger.info(
-                f"Transferring {tx_type} for {transaction['src_id']} at {transaction['updated_at']}."
-            )
             transaction.update(
                 {
                     "data": self.transform_data(
@@ -345,9 +374,6 @@ class NSAgency(Agency):
         target = kwargs.get("target")
         asset = kwargs.get("entity")
         try:
-            self.logger.info(
-                f"Transferring {tx_type} for {asset['src_id']} at {asset['updated_at']}."
-            )
             if tx_type == "product":
                 data = self.transform_data(raw_asset, kwargs.get("metadatas"))
             else:
