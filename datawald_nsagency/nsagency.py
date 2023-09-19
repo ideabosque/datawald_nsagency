@@ -188,41 +188,43 @@ class NSAgency(Agency):
         if result["total_records"] == 0:
             return []
 
+        if result["total_pages"] == 1:
+            return funct(record_type, result["records"], **params)
+
         limit_pages = (
             result["total_pages"]
             if limit_pages == 0
             else min(limit_pages, result["total_pages"])
         )
 
-        if result["page_index"] < limit_pages:
-            tasks = []
-            # Create a multiprocessing Pool
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                # Dispatch asynchronous tasks to different processes for each page index
-                for i in range(2, limit_pages + 1):
-                    tasks.append(
-                        executor.submit(
-                            asyncio.run,
-                            self.dispatch_async_worker_wrapper(
-                                result_funct,
-                                record_type,
-                                **dict(
-                                    params,
-                                    **{
-                                        "search_id": result["search_id"],
-                                        "page_index": i,
-                                    },
-                                ),
+        tasks = []
+        # Create a multiprocessing Pool
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            # Dispatch asynchronous tasks to different processes for each page index
+            for i in range(2, limit_pages + 1):
+                tasks.append(
+                    executor.submit(
+                        asyncio.run,
+                        self.dispatch_async_worker_wrapper(
+                            result_funct,
+                            record_type,
+                            **dict(
+                                params,
+                                **{
+                                    "search_id": result["search_id"],
+                                    "page_index": i,
+                                },
                             ),
-                        )
+                        ),
                     )
+                )
 
-            # Gather the tasks' results from the processes
-            gathered_results = [task.result() for task in tasks]
-            record_list = [entry["records"] for entry in gathered_results]
-            records = result["records"] + [
-                record for sublist in record_list for record in sublist
-            ]
+        # Gather the tasks' results from the processes
+        gathered_results = [task.result() for task in tasks]
+        record_list = [entry["records"] for entry in gathered_results]
+        records = result["records"] + [
+            record for sublist in record_list for record in sublist
+        ]
 
         return funct(record_type, records, **params)
 
