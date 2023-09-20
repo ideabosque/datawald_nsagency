@@ -123,6 +123,10 @@ class NSAgency(Agency):
                             entities.append(result)
                             processed_items += 1
                             progress_percent = (processed_items / total_items) * 100
+
+                            if progress_percent % 25 != 0:
+                                continue
+
                             self.logger.info(
                                 f"Progress (transferring {kwargs.get('tx_type')}): {progress_percent:.2f}%"
                             )
@@ -199,25 +203,11 @@ class NSAgency(Agency):
         return result_funct(record_type, **kwargs)
 
     # Define a wrapper worker for the asynchronous task
-    async def dispatch_async_worker_wrapper(self, result_funct, record_type, **kwargs):
+    async def async_worker_wrapper(self, result_funct, record_type, **kwargs):
         result = await self.async_worker(result_funct, record_type, **kwargs)
         return result
 
-    def get_records_all(self, record_type, result_funct, funct, **params):
-        limit_pages = self.setting.get("LIMIT_PAGES", 3)
-        result = result_funct(record_type, **params)
-        if result["total_records"] == 0:
-            return []
-
-        if result["total_pages"] == 1:
-            return funct(record_type, result["records"], **params)
-
-        limit_pages = (
-            result["total_pages"]
-            if limit_pages == 0
-            else min(limit_pages, result["total_pages"])
-        )
-
+    def dispatch_async_worker(self, record_type, result_funct, limit_pages, **params):
         tasks = []
         # Create a multiprocessing Pool
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -226,13 +216,12 @@ class NSAgency(Agency):
                 tasks.append(
                     executor.submit(
                         asyncio.run,
-                        self.dispatch_async_worker_wrapper(
+                        self.async_worker_wrapper(
                             result_funct,
                             record_type,
                             **dict(
                                 params,
                                 **{
-                                    "search_id": result["search_id"],
                                     "page_index": i,
                                 },
                             ),
@@ -259,6 +248,30 @@ class NSAgency(Agency):
         records = result["records"] + [
             record for sublist in record_list for record in sublist
         ]
+
+        return records
+
+    def get_records_all(self, record_type, result_funct, funct, **params):
+        limit_pages = self.setting.get("LIMIT_PAGES", 3)
+        result = result_funct(record_type, **params)
+        if result["total_records"] == 0:
+            return []
+
+        if result["total_pages"] == 1:
+            return funct(record_type, result["records"], **params)
+
+        limit_pages = (
+            result["total_pages"]
+            if limit_pages == 0
+            else min(limit_pages, result["total_pages"])
+        )
+
+        records = self.dispatch_async_worker(
+            record_type,
+            result_funct,
+            limit_pages,
+            **dict(params, **{"search_id": result["search_id"]}),
+        )
 
         return funct(record_type, records, **params)
 
