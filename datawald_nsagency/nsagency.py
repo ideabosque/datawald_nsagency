@@ -123,10 +123,6 @@ class NSAgency(Agency):
                             entities.append(result)
                             processed_items += 1
                             progress_percent = (processed_items / total_items) * 100
-
-                            if progress_percent % 25 != 0:
-                                continue
-
                             self.logger.info(
                                 f"Progress (transferring {kwargs.get('tx_type')}): {progress_percent:.2f}%"
                             )
