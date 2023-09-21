@@ -33,6 +33,7 @@ class NSAgency(Agency):
             self.map = setting.get("TXMAP", {})
 
         self.join = setting.get("JOIN", {"base": [], "lines": []})
+        self.num_async_workers = setting.get("NUM_ASYNC_WORKERS", 10)
 
     def s3(self, setting):
         if (
@@ -108,7 +109,7 @@ class NSAgency(Agency):
                     # Create a pool of 10 processes
                     entities = []
                     with concurrent.futures.ThreadPoolExecutor(
-                        max_workers=10
+                        max_workers=self.num_async_workers
                     ) as executor:
                         result_iterator = executor.map(
                             lambda raw_entity: tx_entity_src(raw_entity, **kwargs),
