@@ -33,7 +33,7 @@ class NSAgency(Agency):
             self.map = setting.get("TXMAP", {})
 
         self.join = setting.get("JOIN", {"base": [], "lines": []})
-        self.num_async_workers = setting.get("NUM_ASYNC_WORKERS", 10)
+        self.num_async_tasks = setting.get("NUM_ASYNC_TASKS", 10)
 
     def s3(self, setting):
         if (
@@ -109,7 +109,7 @@ class NSAgency(Agency):
                     # Create a pool of 10 processes
                     entities = []
                     with concurrent.futures.ThreadPoolExecutor(
-                        max_workers=self.num_async_workers
+                        max_workers=50
                     ) as executor:
                         result_iterator = executor.map(
                             lambda raw_entity: tx_entity_src(raw_entity, **kwargs),
@@ -199,21 +199,20 @@ class NSAgency(Agency):
         # Your asynchronous code here
         return result_funct(record_type, **kwargs)
 
-    # Define a wrapper worker for the asynchronous task
-    async def async_worker_wrapper(self, result_funct, record_type, **kwargs):
-        result = await self.async_worker(result_funct, record_type, **kwargs)
-        return result
-
     def dispatch_async_worker(self, record_type, result_funct, limit_pages, **params):
+        # Define a wrapper worker for the asynchronous task
+        async def task_wrapper(result_funct, record_type, **kwargs):
+            return await self.async_worker(result_funct, record_type, **kwargs)
+
         tasks = []
         # Create a multiprocessing Pool
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             # Dispatch asynchronous tasks to different processes for each page index
             for i in range(2, limit_pages + 1):
                 tasks.append(
                     executor.submit(
                         asyncio.run,
-                        self.async_worker_wrapper(
+                        task_wrapper(
                             result_funct,
                             record_type,
                             **dict(
