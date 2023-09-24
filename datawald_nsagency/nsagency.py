@@ -241,9 +241,7 @@ class NSAgency(Agency):
             )
 
         record_list = [entry["records"] for entry in gathered_results]
-        records = result["records"] + [
-            record for sublist in record_list for record in sublist
-        ]
+        records = [record for sublist in record_list for record in sublist]
 
         return records
 
@@ -268,6 +266,7 @@ class NSAgency(Agency):
             limit_pages,
             **dict(params, **{"search_id": result["search_id"]}),
         )
+        records = result["records"] + records
 
         return funct(record_type, records, **params)
 
