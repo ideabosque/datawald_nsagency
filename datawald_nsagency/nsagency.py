@@ -106,28 +106,33 @@ class NSAgency(Agency):
                             {"metadatas": self.get_product_metadatas(**kwargs)}
                         )
 
-                    # Create a pool of 10 processes
-                    entities = []
-                    with concurrent.futures.ThreadPoolExecutor(
-                        max_workers=50
-                    ) as executor:
-                        result_iterator = executor.map(
+                    ## Create a pool of 10 processes
+                    # entities = []
+                    # with concurrent.futures.ThreadPoolExecutor(
+                    #     max_workers=50
+                    # ) as executor:
+                    #     result_iterator = executor.map(
+                    #         lambda raw_entity: tx_entity_src(raw_entity, **kwargs),
+                    #         raw_entities,
+                    #     )
+
+                    #     # Track progress and calculate the percentage as before
+                    #     total_items = len(raw_entities)
+                    #     processed_items = 0
+
+                    #     for result in result_iterator:
+                    #         entities.append(result)
+                    #         processed_items += 1
+                    #         progress_percent = (processed_items / total_items) * 100
+                    #         self.logger.info(
+                    #             f"Progress (transferring {kwargs.get('tx_type')}): {progress_percent:.2f}%"
+                    #         )
+                    entities = list(
+                        map(
                             lambda raw_entity: tx_entity_src(raw_entity, **kwargs),
                             raw_entities,
                         )
-
-                        # Track progress and calculate the percentage as before
-                        total_items = len(raw_entities)
-                        processed_items = 0
-
-                        for result in result_iterator:
-                            entities.append(result)
-                            processed_items += 1
-                            progress_percent = (processed_items / total_items) * 100
-                            self.logger.info(
-                                f"Progress (transferring {kwargs.get('tx_type')}): {progress_percent:.2f}%"
-                            )
-
+                    )
                     return entities
                 except Exception:
                     self.logger.info(kwargs)
