@@ -75,6 +75,11 @@ class NSAgency(Agency):
     def get_record_type(self, tx_type):
         return self.setting["data_type"].get(tx_type)
 
+    # Define your asynchronous function here (async_tx_entity_src)
+    async def async_tx_entity_src(self, tx_entity_src, raw_entity, **kwargs):
+        # Your asynchronous code here
+        return tx_entity_src(raw_entity, **kwargs)
+
     ## We can move the decorator to the uplevel.
     def tx_entities_src_decorator():
         def decorator(func):
@@ -106,33 +111,47 @@ class NSAgency(Agency):
                             {"metadatas": self.get_product_metadatas(**kwargs)}
                         )
 
+                    # Define a wrapper worker for the asynchronous task
+                    async def task_wrapper(tx_entity_src, raw_entity, **kwargs):
+                        return await self.async_tx_entity_src(
+                            tx_entity_src, raw_entity, **kwargs
+                        )
+
                     ## Create a pool of 10 processes
-                    # entities = []
-                    # with concurrent.futures.ThreadPoolExecutor(
-                    #     max_workers=50
-                    # ) as executor:
-                    #     result_iterator = executor.map(
+                    tasks = []
+                    with concurrent.futures.ThreadPoolExecutor(
+                        max_workers=50
+                    ) as executor:
+                        # Dispatch asynchronous tasks to different processes for raw_entity
+                        for raw_entity in raw_entities:
+                            tasks.append(
+                                executor.submit(
+                                    asyncio.run,
+                                    task_wrapper(tx_entity_src, raw_entity, **kwargs),
+                                )
+                            )
+
+                    # Track progress and calculate the percentage
+                    total_tasks = len(tasks)
+                    completed_tasks = 0
+
+                    # Gather the tasks' results from the processes
+                    entities = []
+                    for task in concurrent.futures.as_completed(tasks):
+                        result = task.result()
+                        entities.append(result)
+                        completed_tasks += 1
+                        progress_percent = (completed_tasks / total_tasks) * 100
+                        self.logger.info(
+                            f"Progress (transferring {kwargs.get('tx_type')}): {progress_percent:.2f}%"
+                        )
+
+                    # entities = list(
+                    #     map(
                     #         lambda raw_entity: tx_entity_src(raw_entity, **kwargs),
                     #         raw_entities,
                     #     )
-
-                    #     # Track progress and calculate the percentage as before
-                    #     total_items = len(raw_entities)
-                    #     processed_items = 0
-
-                    #     for result in result_iterator:
-                    #         entities.append(result)
-                    #         processed_items += 1
-                    #         progress_percent = (processed_items / total_items) * 100
-                    #         self.logger.info(
-                    #             f"Progress (transferring {kwargs.get('tx_type')}): {progress_percent:.2f}%"
-                    #         )
-                    entities = list(
-                        map(
-                            lambda raw_entity: tx_entity_src(raw_entity, **kwargs),
-                            raw_entities,
-                        )
-                    )
+                    # )
                     return entities
                 except Exception:
                     self.logger.info(kwargs)
