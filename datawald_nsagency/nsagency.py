@@ -417,9 +417,10 @@ class NSAgency(Agency):
 
             if tx_type == "inventory":
                 inventory = data.get("locations")
+                drop_ship_item = data.get("drop_ship_item", False)
                 asset.update(
                     {
-                        "data": {"inventory": inventory},
+                        "data": {"inventory": inventory, "drop_ship_item": drop_ship_item},
                     }
                 )
             elif tx_type == "inventorylot":
