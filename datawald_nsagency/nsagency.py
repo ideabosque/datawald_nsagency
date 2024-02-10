@@ -270,7 +270,7 @@ class NSAgency(Agency):
         return records
 
     def get_records_all(self, record_type, result_funct, funct, **params):
-        limit_pages = self.setting.get("LIMIT_PAGES", 3)
+        limit_pages = int(self.setting.get("LIMIT_PAGES", 3))
         result = result_funct(record_type, **params)
         if result["total_records"] == 0:
             return []
@@ -420,7 +420,10 @@ class NSAgency(Agency):
                 drop_ship_item = data.get("drop_ship_item", False)
                 asset.update(
                     {
-                        "data": {"inventory": inventory, "drop_ship_item": drop_ship_item},
+                        "data": {
+                            "inventory": inventory,
+                            "drop_ship_item": drop_ship_item,
+                        },
                     }
                 )
             elif tx_type == "inventorylot":
