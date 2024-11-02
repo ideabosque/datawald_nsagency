@@ -4,14 +4,14 @@ from __future__ import print_function
 
 __author__ = "bibow"
 
-import traceback, boto3, json, asyncio, time
+import traceback, boto3, json, asyncio, time, requests
 import concurrent.futures
 from datawald_agency import Agency
 from datawald_connector import DatawaldConnector
 from suitetalk_connector import SOAPConnector, RESTConnector
 from datetime import datetime, timedelta
 from pytz import timezone
-
+import concurrent.futures
 
 class NSAgency(Agency):
     def __init__(self, logger, **setting):
@@ -557,6 +557,8 @@ class NSAgency(Agency):
 
     @insert_update_decorator()
     def insert_update_transaction(self, transaction, record_type=None):
+        if len(transaction["data"].get("files", [])) > 0:
+            transaction["data"]["files"] = self.process_files(transaction["data"].get("files", []))
         transaction["tgt_id"] = self.soap_connector.insert_update_transaction(
             record_type, transaction["data"]
         )
@@ -581,3 +583,39 @@ class NSAgency(Agency):
             record_type, person["data"]
         )
         person["tx_status"] = "S"
+
+    def process_files(self, files):
+        ns_folder_internal_id = self.setting.get("ns_folder_internal_id")
+        max_workers = 5
+        processed_files = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(
+                    lambda file: get_file_content(file),
+                    file
+                )
+                for file in files
+            ]
+
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    future_result = future.result()
+                    if future_result is not None:
+                        future_result.update({"folder_internal_id": ns_folder_internal_id})
+                        processed_files.append(future_result)
+                except Exception as e:
+                    pass
+        return processed_files
+
+def get_file_content(file):
+    if file.get("url"):
+        r = requests.get(file.get("url"), allow_redirects=True)
+        if r.status_code == 404:
+            return None
+        else:
+            file.update({
+                "content": r.content
+            })
+            return file
+    else:
+        return None
