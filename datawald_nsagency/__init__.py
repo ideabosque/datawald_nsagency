@@ -6,4 +6,4 @@ __author__ = "bibow"
 
 __all__ = ["datawald_nsagency"]
 from .nsagency import NSAgency
-from .nsagent import NSAgent
+from .nsagent import NSAgent, deploy
