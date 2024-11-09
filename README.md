@@ -50,6 +50,16 @@ Establish essential parameters for `datawald_nsagency` by adding these records:
 }
 ```
 
+### SuiteTalk SOAP API Version Configuration
+
+```json
+{
+  "setting_id": "datawald_nsagency",
+  "variable": "VERSION",
+  "value": "2023_1_0"
+}
+```
+
 ### Country Code Mapping
 
 Standardize country identifiers across platforms:
