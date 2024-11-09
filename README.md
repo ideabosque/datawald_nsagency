@@ -1,14 +1,14 @@
-# datawald_nsagency Integration
+# DataWald_nsagency Integration Guide
 
-The module operates within the DataWald integration framework, providing SuiteConnector capabilities to streamline data transformation processes. It enables seamless data retrieval from NetSuite as well as data insertion back into NetSuite, ensuring efficient data flow and integration.
+The `datawald_nsagency` module functions within the DataWald integration ecosystem, equipping it with SuiteConnector capabilities for seamless data transformations. This module facilitates efficient data retrieval and insertion in NetSuite, ensuring a streamlined data flow across systems.
 
 ## Configuration Guide
 
-To integrate `datawald_nsagency`, you’ll need to populate the `se-configdata` table in DynamoDB with the necessary configuration settings as outlined below.
+To integrate `datawald_nsagency`, configure the necessary settings in the `se-configdata` table within DynamoDB, as detailed below.
 
 ### Core Configuration
 
-Add the following records to set up the foundational configuration for `datawald_nsagency`:
+Establish essential parameters for `datawald_nsagency` by adding these records:
 
 ```json
 {
@@ -52,7 +52,7 @@ Add the following records to set up the foundational configuration for `datawald
 
 ### Country Code Mapping
 
-Define country codes to standardize identifiers across platforms:
+Standardize country identifiers across platforms:
 
 ```json
 {
@@ -69,9 +69,9 @@ Define country codes to standardize identifiers across platforms:
 
 ### Customer and Transaction Settings
 
-Configure how customer data and transactions are handled:
+Define policies and preferences for customer and transaction data handling:
 
-- **Customer Creation Policy:** If no existing customer record is found, specify whether to create a new customer.
+- **Customer Creation Policy**: Specify if new customers should be created when not found in existing records.
 
   ```json
   {
@@ -81,20 +81,17 @@ Configure how customer data and transactions are handled:
   }
   ```
 
-- **Customer Deposit Creation:** Specify payment methods that require customer deposits.
+- **Customer Deposit Creation**: List payment methods that require customer deposits.
 
   ```json
   {
       "setting_id": "datawald_nsagency",
       "variable": "CREATE_CUSTOMER_DEPOSIT",
-      "value": [
-          "VISA",
-          "Master Card"
-      ]
+      "value": ["VISA", "Master Card"]
   }
   ```
 
-- **Default Billing Address:** Set whether the input billing address should serve as the default.
+- **Default Billing Address**: Choose whether to set the input billing address as the default.
 
   ```json
   {
@@ -104,7 +101,7 @@ Configure how customer data and transactions are handled:
   }
   ```
 
-- **Page Limit:** Set the limit for pages displayed in search results.
+- **Page Limit**: Set a limit for the number of pages in search results.
 
   ```json
   {
@@ -116,7 +113,7 @@ Configure how customer data and transactions are handled:
 
 ### Item and Transaction Mapping
 
-Establish mappings for handling item data and transaction details:
+Define mappings for item data and transaction details:
 
 ```json
 {
@@ -127,13 +124,7 @@ Establish mappings for handling item data and transaction details:
             "customrecord_cseg_sales_class": "187",
             "customrecord_shipping_carrier": "164"
         },
-        "inventory_detail_record_types": [
-            "purchaseOrder",
-            "itemReceipt",
-            "itemFulfillment",
-            "salesOrder",
-            ...
-        ],
+        "inventory_detail_record_types": ["purchaseOrder", "itemReceipt", "itemFulfillment", "salesOrder", ...],
         "item_data_type": {
             "inventoryItem": "ns17:InventoryItem",
             "lotNumberedInventoryItem": "ns17:LotNumberedInventoryItem",
@@ -144,19 +135,71 @@ Establish mappings for handling item data and transaction details:
 }
 ```
 
+#### RESTful API Mapping
+
+Map configurations for REST API interactions:
+
+```json
+{
+ "setting_id": "datawald_nsagency",
+ "variable": "NETSUITEMAPPINGSREST",
+ "value": {
+  "custom_records": {"customrecord_shipping_carrier": "164"},
+  "item_data_type": {
+   "inventoryItem": "ns17:InventoryItem",
+   "lotNumberedInventoryItem": "ns17:LotNumberedInventoryItem",
+   "nonInventoryResaleItem": "ns17:NonInventoryResaleItem"
+  },
+  "lookup_join_fields": {
+   "invoice": {
+    "base": ["invoice_tran_id|tranId", "invoice_status|status", "invoice_tran_date|tranDate", "invoice_total|total"],
+    "created_from_types": ["salesOrder"],
+    "lines": []
+   },
+   ...
+ }
+}
+```
+
+### Data Type Mapping
+
+Establish the mappings between DataWald and NetSuite for data types:
+
+```json
+{
+ "setting_id": "datawald_nsagency",
+ "variable": "data_type",
+ "value": {
+  "billcredit": "vendorCredit",
+  "company": "customer",
+  "contact": "contact",
+  "creditmemo": "creditMemo",
+  ...
+ }
+}
+```
+
+### NetSuite Folder Internal ID
+
+Specify the internal ID for processing files stored in NetSuite:
+
+```json
+{
+ "setting_id": "datawald_nsagency",
+ "variable": "ns_folder_internal_id",
+ "value": "-10"
+}
+```
+
 ### Payment, Shipping, and Terms Mapping
 
-Configure mappings for payment methods, shipping options, and terms:
+Set mappings for payment, shipping, and term options:
 
 ```json
 {
     "setting_id": "datawald_nsagency",
     "variable": "PAYMENT_METHODS",
-    "value": {
-        "####": "Wire",
-        "authnetcim": "American Express",
-        ...
-    }
+    "value": {"####": "Wire", "authnetcim": "American Express", ...}
 }
 ```
 
@@ -164,11 +207,7 @@ Configure mappings for payment methods, shipping options, and terms:
 {
     "setting_id": "datawald_nsagency",
     "variable": "SHIP_METHODS",
-    "value": {
-        "####": "Truck",
-        "ewp_ftl_shipping": "FTL Shipping",
-        ...
-    }
+    "value": {"####": "Truck", "ewp_ftl_shipping": "FTL Shipping", ...}
 }
 ```
 
@@ -176,16 +215,13 @@ Configure mappings for payment methods, shipping options, and terms:
 {
     "setting_id": "datawald_nsagency",
     "variable": "TERMS",
-    "value": {
-        "Cash": ["Cash"],
-        ...
-    }
+    "value": {"Cash": ["Cash"], ...}
 }
 ```
 
 ### Timezone and Warehouse Settings
 
-Set the default timezone and active warehouses:
+Define default timezone and specify active warehouse locations:
 
 ```json
 {
@@ -199,17 +235,13 @@ Set the default timezone and active warehouses:
 {
     "setting_id": "datawald_nsagency",
     "variable": "WAREHOUSES",
-    "value": [
-        "Los-Angeles",
-        "New-York",
-        ...
-    ]
+    "value": ["Los-Angeles", "New-York", ...]
 }
 ```
 
 ### Source Metadata
 
-Define metadata structure for source records to facilitate data retrieval and synchronization:
+Specify metadata structures for efficient data retrieval and synchronization:
 
 ```json
 {
@@ -226,4 +258,4 @@ Define metadata structure for source records to facilitate data retrieval and sy
 }
 ```
 
-This configuration guide outlines the required setup for integrating `datawald_nsagency` effectively, covering essential parameters to optimize data management and interoperability.
+This guide covers essential setup requirements for the `datawald_nsagency` integration, enabling a robust data management and interoperability framework across NetSuite and DataWald platforms.
