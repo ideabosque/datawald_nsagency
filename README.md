@@ -268,4 +268,232 @@ Specify metadata structures for efficient data retrieval and synchronization:
 }
 ```
 
+### Data Transformation Mapping
+
+Specify the column mappings and define transformation rules for data processing.
+
+```json
+{
+  "datamart": {
+    "customer": {
+      "account_tags": {
+        "funct": "','.join([i['name'] for i in src['account_tags']]) if src.get('account_tags') is not None else ''",
+        "src": [
+          {
+            "key": "@custentityaccounts_tags",
+            "label": "account_tags"
+          }
+        ],
+        "type": "attribute"
+      },
+      "account_transfer_date": {
+        "funct": "src['account_transfer_date'].astimezone(timezone('UTC')).strftime('%Y-%m-%d %H:%M:%S') if src.get('account_transfer_date') is not None else ''",
+        "src": [
+          {
+            "key": "@custentityaccount_transfer_date",
+            "label": "account_transfer_date"
+          }
+        ],
+        "type": "attribute"
+      },
+      "account_transfer_date_pst": {
+        "funct": "src['account_transfer_date_pst'].strftime('%Y-%m-%d') if src.get('account_transfer_date_pst') is not None else ''",
+        "src": [
+          {
+            "key": "@custentityaccount_transfer_date",
+            "label": "account_transfer_date_pst"
+          }
+        ],
+        "type": "attribute"
+      },
+      "annual_revenue": {
+        "funct": "src.get('annual_revenue')",
+        "src": [
+          {
+            "default": "",
+            "key": "@custentity_annual_revenue",
+            "label": "annual_revenue"
+          }
+        ],
+        "type": "attribute"
+      },
+      "balance": {
+        "funct": "src['balance'] if src.get('fe_customer_id') == '' else 0",
+        "src": [
+          {
+            "default": "",
+            "key": "balance",
+            "label": "balance"
+          }
+        ],
+        "type": "attribute"
+      },
+      "campaign_category": {
+        "funct": "src.get('campaign_category')",
+        "src": [
+          {
+            "default": "",
+            "key": "campaignCategory|name",
+            "label": "campaign_category"
+          }
+        ],
+        "type": "attribute"
+      },
+      "category": {
+        "funct": "src.get('category')",
+        "src": [
+          {
+            "default": "",
+            "key": "category|name",
+            "label": "category"
+          }
+        ],
+        "type": "attribute"
+      },
+      "company_name": {
+        "funct": "src.get('company_name')",
+        "src": [
+          {
+            "default": "",
+            "key": "companyName",
+            "label": "company_name"
+          }
+        ],
+        "type": "attribute"
+      },
+      "contract_manufacturer": {
+        "funct": "src.get('contract_manufacturer')",
+        "src": [
+          {
+            "default": "",
+            "key": "@custentity_contract_manufacturer",
+            "label": "contract_manufacturer"
+          }
+        ],
+        "type": "attribute"
+      },
+      "created_date": {
+        "funct": "src['created_date'].astimezone(timezone('UTC')).strftime('%Y-%m-%d %H:%M:%S')",
+        "src": [
+          {
+            "key": "dateCreated",
+            "label": "created_date"
+          }
+        ],
+        "type": "attribute"
+      },
+      "created_date_pst": {
+        "funct": "src['created_date_pst'].strftime('%Y-%m-%d')",
+        "src": [
+          {
+            "key": "dateCreated",
+            "label": "created_date_pst"
+          }
+        ],
+        "type": "attribute"
+      },
+      ...
+    },
+    "estimate": {
+      "customer": {
+        "funct": "src['customer']['name'] if src['customer'] is not None else ''",
+        "src": [
+          {
+            "key": "entity",
+            "label": "customer"
+          }
+        ],
+        "type": "attribute"
+      },
+      "tran_id": {
+        "funct": "src['tran_id']",
+        "src": [
+          {
+            "key": "tranId",
+            "label": "tran_id"
+          }
+        ],
+        "type": "attribute"
+      },
+      "end_date": {
+        "funct": "src['end_date'].astimezone(timezone('UTC')).strftime('%Y-%m-%d %H:%M:%S') if src.get('end_date') else None",
+        "src": [
+          {
+            "key": "endDate",
+            "label": "end_date"
+          }
+        ],
+        "type": "attribute"
+      },
+      ...
+    },
+    "inventory": {
+      "locations": {
+        "funct": {
+          "full": {
+            "funct": "src['full']",
+            "src": [
+              {
+                "default": true,
+                "label": "full"
+              }
+            ],
+            "type": "attribute"
+          },
+          "in_stock": {
+            "funct": "True if src.get('qty') is not None and src.get('qty') > 0 else False",
+            "src": [
+              {
+                "key": "quantityAvailable",
+                "label": "qty"
+              }
+            ],
+            "type": "attribute"
+          },
+          ...
+        },
+        "src": [
+          {
+            "key": "locationsList|locations"
+          }
+        ],
+        "type": "list"
+      }
+    },
+    ...
+  }
+}
+```
+
+In this schema, each entry specifies the data transformation rules for different entities, including **customers**, **estimates**, **inventory**, and **invoices**. Each transformation consists of:
+- `funct`: The function rule to apply for data manipulation, utilizing source data attributes.
+- `src`: A list of source data attributes.
+- `type`: Indicates the attribute type, e.g., `attribute` or `list`.
+
+The JSON structure supports complex, nested mappings that facilitate flexible and accurate data transformations across various data categories.
+
+### S3 Bucket and File Key Configuration
+
+In cases where the `tx_map` exceeds the storage limits of a DynamoDB table cell, it will be stored in an S3 bucket. The configuration below specifies the S3 bucket and the file key path for the `txmap.json` file, ensuring easy retrieval and management.
+
+#### Example Configuration:
+
+```json
+{
+ "setting_id": "datawald_nsagency",
+ "variable": "TXMAP_BUCKET",
+ "value": "io-txmap-dev"  // S3 bucket for storing txmap.json
+}
+```
+
+```json
+{
+ "setting_id": "datawald_nsagency",
+ "variable": "TXMAP_KEY",
+ "value": "ns/txmap.json"  // File key path for txmap.json in the S3 bucket
+}
+``` 
+
+This setup enables efficient storage and access of large `tx_map` data in an S3 bucket using predefined identifiers.
+
 This guide covers essential setup requirements for the `datawald_nsagency` integration, enabling a robust data management and interoperability framework across NetSuite and DataWald platforms.
