@@ -1,6 +1,6 @@
 # DataWald_nsagency Integration Guide
 
-The `datawald_nsagency` module functions within the DataWald integration ecosystem, equipping it with SuiteConnector capabilities for seamless data transformations. This module facilitates efficient data retrieval and insertion in NetSuite, ensuring a streamlined data flow across systems.
+The `datawald_nsagency` module functions within the DataWald integration ecosystem, equipping it with `suitetalk_connector` capabilities for seamless data transformations. This module facilitates efficient data retrieval and insertion in NetSuite, ensuring a streamlined data flow across systems.
 
 ## Configuration Guide
 
